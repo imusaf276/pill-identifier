@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PillID — Medication Identifier</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f5f2ec; --surface: #ffffff; --ink: #1a1410; --muted: #7a7060;
+      --accent: #c8502a; --accent-light: #f5e8e3; --border: #e0d9ce;
+      --radius: 14px; --shadow: 0 2px 20px rgba(0,0,0,0.07);
+    }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--ink); min-height: 100vh; padding: 2rem 1rem 4rem; }
+    header { text-align: center; margin-bottom: 2.5rem; }
+    header h1 { font-family: 'DM Serif Display', serif; font-size: clamp(2rem, 5vw, 3.2rem); letter-spacing: -0.5px; }
+    header h1 span { color: var(--accent); font-style: italic; }
+    header p { margin-top: 0.5rem; color: var(--muted); font-size: 1rem; font-weight: 300; }
+    .disclaimer { background: #fff8e6; border: 1px solid #f0d78a; border-radius: 10px; padding: 0.75rem 1.1rem; font-size: 0.82rem; color: #7a5f00; max-width: 640px; margin: 0 auto 2rem; line-height: 1.5; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 2rem; max-width: 640px; margin: 0 auto 2rem; box-shadow: var(--shadow); }
+    .upload-zone { border: 2px dashed var(--border); border-radius: 10px; padding: 2.5rem 1rem; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; position: relative; margin-bottom: 1.5rem; background: var(--bg); }
+    .upload-zone:hover, .upload-zone.drag-over { border-color: var(--accent); background: var(--accent-light); }
+    .upload-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .upload-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+    .upload-zone p { color: var(--muted); font-size: 0.9rem; }
+    .upload-zone strong { color: var(--accent); }
+    #preview-wrap { display: none; margin-top: 1rem; text-align: center; }
+    #preview-wrap img { max-height: 180px; border-radius: 8px; border: 1px solid var(--border); }
+    #clear-img { display: block; margin: 0.5rem auto 0; background: none; border: none; color: var(--muted); font-size: 0.8rem; cursor: pointer; text-decoration: underline; }
+    label.field-label { display: block; font-weight: 500; font-size: 0.88rem; margin-bottom: 0.4rem; }
+    textarea { width: 100%; border: 1px solid var(--border); border-radius: 10px; padding: 0.85rem 1rem; font-family: 'DM Sans', sans-serif; font-size: 0.95rem; resize: vertical; min-height: 90px; color: var(--ink); background: var(--bg); transition: border-color 0.2s; }
+    textarea:focus { outline: none; border-color: var(--accent); }
+    .hint { font-size: 0.78rem; color: var(--muted); margin-top: 0.3rem; }
+    button.search-btn { display: block; width: 100%; margin-top: 1.5rem; padding: 0.9rem; background: var(--accent); color: white; border: none; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 1rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s, transform 0.1s; }
+    button.search-btn:hover { opacity: 0.9; }
+    button.search-btn:active { transform: scale(0.99); }
+    button.search-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    #results-section { max-width: 640px; margin: 0 auto; }
+    #results-section h2 { font-family: 'DM Serif Display', serif; font-size: 1.5rem; margin-bottom: 0.3rem; }
+    #results-section .query-label { font-size: 0.8rem; color: var(--muted); margin-bottom: 1.2rem; }
+    .pill-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; }
+    .pill-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); transition: transform 0.15s, box-shadow 0.15s; display: flex; flex-direction: column; }
+    .pill-card:hover { transform: translateY(-3px); box-shadow: 0 6px 28px rgba(0,0,0,0.11); }
+    .pill-card img { width: 100%; height: 150px; object-fit: cover; background: var(--bg); }
+    .pill-card-body { padding: 0.75rem; flex: 1; display: flex; flex-direction: column; gap: 0.35rem; }
+    .pill-card-title { font-size: 0.82rem; font-weight: 600; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .pill-card-domain { font-size: 0.72rem; color: var(--accent); font-weight: 500; }
+    .pill-card-snippet { font-size: 0.72rem; color: var(--muted); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .pill-card a { margin-top: auto; font-size: 0.75rem; color: var(--accent); text-decoration: none; font-weight: 500; }
+    .pill-card a:hover { text-decoration: underline; }
+    #error-box { background: #fee; border: 1px solid #f8c0c0; border-radius: 10px; padding: 1rem; color: #900; font-size: 0.9rem; display: none; max-width: 640px; margin: 0 auto; }
+    .spinner { display: none; text-align: center; padding: 2rem; color: var(--muted); font-size: 0.9rem; }
+    .spinner::before { content: ''; display: block; width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 0.75rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Pill<span>ID</span></h1>
+  <p>Identify your medication by photo or description</p>
+</header>
+<div class="disclaimer">
+  ⚠️ <strong>Medical Disclaimer:</strong> PillID is for informational purposes only and is <strong>not</strong> a substitute for professional medical advice. Always consult a pharmacist or physician to confirm medication identity.
+</div>
+<div class="card">
+  <div class="upload-zone" id="drop-zone">
+    <input type="file" id="pill-image" accept="image/*" capture="environment" />
+    <div class="upload-icon">📷</div>
+    <p><strong>Upload or take a photo</strong> of your pill</p>
+    <p style="margin-top:0.3rem">Drag & drop or click to browse</p>
+  </div>
+  <div id="preview-wrap">
+    <img id="preview-img" src="" alt="Pill preview" />
+    <button id="clear-img">Remove photo</button>
+  </div>
+  <label class="field-label" for="description">Describe the pill</label>
+  <textarea id="description" placeholder="e.g. Small round white pill, scored in the middle, imprint 'L484'"></textarea>
+  <p class="hint">Include color, shape, size, imprints, or markings for best results.</p>
+  <button class="search-btn" id="search-btn" onclick="searchPill()">🔍 Identify Pill</button>
+</div>
+<div id="error-box"></div>
+<div class="spinner" id="spinner">Searching for matching pills…</div>
+<div id="results-section" style="display:none">
+  <h2>Possible Matches</h2>
+  <p class="query-label" id="query-label"></p>
+  <div class="pill-grid" id="pill-grid"></div>
+</div>
+<script>
+  const dropZone = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('pill-image');
+  const previewWrap = document.getElementById('preview-wrap');
+  const previewImg = document.getElementById('preview-img');
+  fileInput.addEventListener('change', () => showPreview(fileInput.files[0]));
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f) { fileInput.files = e.dataTransfer.files; showPreview(f); }
+  });
+  function showPreview(file) {
+    if (!file) return;
+    previewImg.src = URL.createObjectURL(file);
+    previewWrap.style.display = 'block';
+    dropZone.style.display = 'none';
+  }
+  document.getElementById('clear-img').addEventListener('click', () => {
+    fileInput.value = '';
+    previewWrap.style.display = 'none';
+    dropZone.style.display = 'block';
+    previewImg.src = '';
+  });
+  async function searchPill() {
+    const description = document.getElementById('description').value.trim();
+    const file = fileInput.files[0];
+    const errBox = document.getElementById('error-box');
+    errBox.style.display = 'none';
+    if (!description && !file) {
+      errBox.textContent = 'Please upload a photo or enter a description.';
+      errBox.style.display = 'block';
+      return;
+    }
+    document.getElementById('search-btn').disabled = true;
+    document.getElementById('spinner').style.display = 'block';
+    document.getElementById('results-section').style.display = 'none';
+    const formData = new FormData();
+    formData.append('description', description);
+    if (file) formData.append('image', file);
+    try {
+      const res = await fetch('/api/identify', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Unknown error');
+      document.getElementById('query-label').textContent = `Search: "${data.query}"`;
+      renderResults(data.results);
+    } catch (err) {
+      errBox.textContent = err.message;
+      errBox.style.display = 'block';
+    } finally {
+      document.getElementById('search-btn').disabled = false;
+      document.getElementById('spinner').style.display = 'none';
+    }
+  }
+  function renderResults(results) {
+    const section = document.getElementById('results-section');
+    const grid = document.getElementById('pill-grid');
+    grid.innerHTML = '';
+    if (!results.length) {
+      grid.innerHTML = '<p style="color:var(--muted);font-size:0.9rem">No pill photos found. Try a more specific description.</p>';
+    } else {
+      results.forEach(r => {
+        const card = document.createElement('div');
+        card.className = 'pill-card';
+        card.innerHTML = `
+          <img src="${r.imageUrl}" alt="${r.title}" onerror="this.parentElement.style.display='none'" />
+          <div class="pill-card-body">
+            <div class="pill-card-title">${r.title}</div>
+            <div class="pill-card-domain">📌 ${r.sourceDomain}</div>
+            <div class="pill-card-snippet">${r.snippet}</div>
+            <a href="${r.sourceUrl}" target="_blank" rel="noopener">View source →</a>
+          </div>`;
+        grid.appendChild(card);
+      });
+    }
+    section.style.display = 'block';
+    section.scrollIntoView({ behavior: 'smooth' });
+  }
+</script>
+</body>
+</html>
